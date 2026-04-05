@@ -4,7 +4,8 @@
 #include <vector>
 
 class MainComponent : public juce::AudioAppComponent,
-    public juce::ChangeListener
+    public juce::ChangeListener,
+    public juce::Timer
 {
 public:
     MainComponent();
@@ -18,25 +19,30 @@ public:
     void resized() override;
 
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+    void timerCallback() override;
 
 private:
     juce::TextButton openButton;
+    juce::TextButton playButton;
+    juce::TextButton stopButton;
+
     juce::AudioFormatManager formatManager;
+    juce::AudioTransportSource transportSource;
     std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
+
     std::unique_ptr<juce::FileChooser> chooser;
 
     juce::AudioThumbnailCache thumbnailCache;
     juce::AudioThumbnail thumbnail;
 
-    // --- Analisis de Audio ---
     std::vector<double> clippingPoints;
     double estimatedBPM = 0.0;
     float averageRMS = 0.0f;
 
     void analyzeAudio(juce::File file);
-    // -------------------------
-
     void openButtonClicked();
+    void playButtonClicked();
+    void stopButtonClicked();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
