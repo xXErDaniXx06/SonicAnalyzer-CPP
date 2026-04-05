@@ -1,0 +1,15 @@
+# Archivos de sistema y Visual Studio
+.vs/
+*.db
+*.opendb
+*.VC.db
+
+# Carpetas pesadas que Projucer regenera solo
+SonicAnalyzer/Builds/
+SonicAnalyzer/JuceLibraryCode/
+
+# Binarios
+*.exe
+*.pdb
+*.ilk
+*.obj
