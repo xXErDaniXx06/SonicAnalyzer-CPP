@@ -1,10 +1,16 @@
 #include "MainComponent.h"
 
-// --- ESTE ES EL CONSTRUCTOR (Solo debe haber uno) ---
 MainComponent::MainComponent()
+    : thumbnailCache(5),
+    thumbnail(512, formatManager, thumbnailCache)
 {
+    // Registramos formatos como MP3 y WAV
     formatManager.registerBasicFormats();
 
+    // Configuramos el dibujante de ondas
+    thumbnail.addChangeListener(this);
+
+    // Configuramos el boton
     openButton.setButtonText("Cargar MP3...");
     openButton.onClick = [this] { openButtonClicked(); };
     addAndMakeVisible(openButton);
@@ -18,15 +24,39 @@ MainComponent::~MainComponent()
     shutdownAudio();
 }
 
-// --- MÉTODOS DE AUDIO VACÍOS POR AHORA ---
 void MainComponent::prepareToPlay(int, double) {}
 void MainComponent::getNextAudioBlock(const juce::AudioSourceChannelInfo&) {}
 void MainComponent::releaseResources() {}
 
-// --- DIBUJO DE LA INTERFAZ ---
+void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
+{
+    if (source == &thumbnail)
+        repaint(); // Forzamos el redibujado de la pantalla
+}
+
 void MainComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    // Fondo negro
+    g.fillAll(juce::Colours::black);
+
+    auto area = getLocalBounds().reduced(20);
+    area.removeFromTop(60); // Dejamos sitio para el boton
+
+    // Si hay un archivo cargado, dibujamos la onda
+    if (thumbnail.getNumChannels() > 0)
+    {
+        g.setColour(juce::Colours::lightblue);
+        thumbnail.drawChannels(g, area, 0.0, thumbnail.getTotalLength(), 1.0f);
+
+        // Marco de la zona de visualizacion
+        g.setColour(juce::Colours::white.withAlpha(0.3f));
+        g.drawRect(area);
+    }
+    else
+    {
+        g.setColour(juce::Colours::white);
+        g.drawText("Cargue un archivo para ver la onda de audio", area, juce::Justification::centred);
+    }
 }
 
 void MainComponent::resized()
@@ -34,10 +64,9 @@ void MainComponent::resized()
     openButton.setBounds(20, 20, 150, 40);
 }
 
-// --- LÓGICA DE APERTURA DE ARCHIVO ---
 void MainComponent::openButtonClicked()
 {
-    chooser = std::make_unique<juce::FileChooser>("Selecciona un MP3...",
+    chooser = std::make_unique<juce::FileChooser>("Seleccione un archivo de audio...",
         juce::File::getSpecialLocation(juce::File::userMusicDirectory),
         "*.mp3;*.wav");
 
@@ -54,7 +83,11 @@ void MainComponent::openButtonClicked()
                 if (reader != nullptr)
                 {
                     readerSource.reset(new juce::AudioFormatReaderSource(reader, true));
-                    juce::Logger::outputDebugString("¡Todo listo: " + file.getFileName() + "!");
+
+                    // Pasamos el archivo al dibujante de ondas
+                    thumbnail.setSource(new juce::FileInputSource(file));
+
+                    juce::Logger::outputDebugString("Archivo cargado: " + file.getFileName());
                 }
             }
         });
