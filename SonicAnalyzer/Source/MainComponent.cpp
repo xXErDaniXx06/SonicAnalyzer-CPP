@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include <cmath>
 #include <algorithm>
 
 MainComponent::MainComponent()
@@ -22,7 +23,7 @@ MainComponent::MainComponent()
     playButton.onClick = [this] { playButtonClicked(); };
     setupBtn(stopButton, "STOP", juce::Colour(0xff5a2727));
     stopButton.onClick = [this] { stopButtonClicked(); };
-    setupBtn(exportButton, "INFORME PRO", juce::Colour(0xff3c5a8c));
+    setupBtn(exportButton, "INFORME FINAL", juce::Colour(0xff3c5a8c));
     exportButton.onClick = [this] { exportButtonClicked(); };
 
     setSize(1200, 800);
@@ -43,7 +44,7 @@ void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* s) { if (s =
 
 void MainComponent::updateSeekPosition(int x) {
     if (thumbnail.getTotalLength() > 0) {
-        auto waveArea = getLocalBounds().reduced(20).removeFromLeft(850).removeFromTop(350);
+        auto waveArea = getLocalBounds().reduced(25).removeFromLeft(800).removeFromTop(400);
         float ratio = juce::jlimit(0.0f, 1.0f, (float)(x - waveArea.getX()) / waveArea.getWidth());
         transportSource.setPosition(ratio * thumbnail.getTotalLength());
     }
@@ -55,39 +56,36 @@ void MainComponent::mouseDrag(const juce::MouseEvent& e) { updateSeekPosition(e.
 void MainComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff050505));
-    auto area = getLocalBounds().reduced(20);
+    auto area = getLocalBounds().reduced(25);
 
-    // Panel de Estadisticas (Lateral Derecho)
-    auto statsArea = area.removeFromRight(320);
-    g.setColour(juce::Colour(0xff101010));
-    g.fillRoundedRectangle(statsArea.toFloat(), 12.0f);
-    g.setColour(juce::Colours::cyan.withAlpha(0.2f));
-    g.drawRoundedRectangle(statsArea.toFloat(), 12.0f, 1.5f);
+    // Panel de Estadisticas
+    auto statsArea = area.removeFromRight(350);
+    g.setColour(juce::Colour(0xff0f0f0f));
+    g.fillRoundedRectangle(statsArea.toFloat(), 15.0f);
+    g.setColour(juce::Colours::cyan.withAlpha(0.15f));
+    g.drawRoundedRectangle(statsArea.toFloat(), 15.0f, 2.0f);
 
     auto drawStat = [&](juce::String label, juce::String value, int y, juce::Colour vCol = juce::Colours::cyan) {
         g.setColour(juce::Colours::grey); g.setFont(13.0f);
-        g.drawText(label, statsArea.getX() + 20, statsArea.getY() + y, 280, 20, juce::Justification::left);
-        g.setColour(vCol); g.setFont(juce::Font("Consolas", 19.0f, juce::Font::bold));
-        g.drawText(value, statsArea.getX() + 20, statsArea.getY() + y + 18, 280, 25, juce::Justification::left);
+        g.drawText(label, statsArea.getX() + 25, statsArea.getY() + y, 300, 20, juce::Justification::left);
+        g.setColour(vCol); g.setFont(juce::Font("Consolas", 21.0f, juce::Font::bold));
+        g.drawText(value, statsArea.getX() + 25, statsArea.getY() + y + 20, 300, 25, juce::Justification::left);
         };
 
     if (stats.duration > 0) {
-        drawStat("INTEGRATED LOUDNESS", juce::String(stats.lufsIntegrated, 1) + " LUFS", 20, juce::Colours::yellow);
-        drawStat("LOUDNESS RANGE (LRA)", juce::String(stats.lra, 1) + " LU", 75);
-        drawStat("DYNAMIC RANGE (PLR)", juce::String(stats.plr, 1) + " dB", 130);
-        drawStat("TRUE PEAK MAX", juce::String(stats.truePeakDb, 2) + " dBFS", 185,
-            stats.truePeakDb > -1.0f ? juce::Colours::red : juce::Colours::cyan);
-        drawStat("SHORT-TERM MAX", juce::String(stats.lufsShortTermMax, 1) + " LUFS", 240);
-        drawStat("M/S WIDTH (Side/Mid)", juce::String(stats.stereoWidth * 100.0f, 0) + "%", 295);
-        drawStat("ZERO CROSSING RATE", juce::String(stats.zeroCrossings / 1000) + "k / sec", 350);
-        drawStat("CLIPPING DETECTED", juce::String(stats.clippingCount), 405,
-            stats.clippingCount > 0 ? juce::Colours::orangered : juce::Colours::cyan);
+        drawStat("KEY / TONALITY", stats.detectedKey, 25, juce::Colours::gold);
+        drawStat("LOUDNESS INTEGRATED", juce::String(stats.lufsIntegrated, 1) + " LUFS", 85, juce::Colours::yellow);
+        drawStat("DYNAMIC RANGE (PLR)", juce::String(stats.plr, 1) + " dB", 145);
+        drawStat("TRUE PEAK MAX", juce::String(stats.truePeakDb, 2) + " dBFS", 205);
+        drawStat("LOUDNESS RANGE (LRA)", juce::String(stats.lra, 1) + " LU", 265);
+        drawStat("STEREO WIDTH", juce::String(stats.stereoWidth * 100.0f, 0) + "%", 325);
+        drawStat("CLIPPING EVENTS", juce::String(stats.clippingCount), 385, stats.clippingCount > 0 ? juce::Colours::red : juce::Colours::cyan);
+        drawStat("ZERO CROSSINGS", juce::String(stats.zeroCrossings / 1000) + "k/s", 445);
     }
 
-    // Dibujo de Interfaz Principal
-    auto waveArea = area.removeFromTop(350);
+    auto waveArea = area.removeFromTop(400);
     g.setColour(juce::Colour(0xff111111));
-    g.fillRoundedRectangle(waveArea.toFloat(), 6.0f);
+    g.fillRoundedRectangle(waveArea.toFloat(), 8.0f);
 
     if (thumbnail.getNumChannels() > 0) {
         juce::ColourGradient wg(juce::Colours::cyan, (float)waveArea.getX(), 0, juce::Colours::blueviolet, (float)waveArea.getRight(), 0, false);
@@ -109,6 +107,102 @@ void MainComponent::resized() {
     playButton.setBounds(btns.removeFromLeft(100).reduced(2));
     stopButton.setBounds(btns.removeFromLeft(100).reduced(2));
     exportButton.setBounds(btns.removeFromLeft(180).reduced(2));
+}
+
+// --- LOGICA DE DETECCION DE TONALIDAD ---
+juce::String MainComponent::estimateKey(const std::vector<float>& chroma)
+{
+    const juce::String noteNames[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+
+    // Perfiles ideales de Krumhansl-Schmuckler (Simplificados)
+    float majorProfile[] = { 6.35f, 2.23f, 3.48f, 2.33f, 4.38f, 4.09f, 2.52f, 5.19f, 2.39f, 3.66f, 2.29f, 2.88f };
+    float minorProfile[] = { 6.33f, 2.68f, 3.52f, 5.38f, 2.60f, 3.53f, 2.54f, 4.75f, 3.98f, 2.69f, 3.34f, 3.17f };
+
+    int bestRoot = 0;
+    bool isMinor = false;
+    float maxCorrelation = -1.0f;
+
+    for (int root = 0; root < 12; ++root) {
+        float corrMajor = 0, corrMinor = 0;
+        for (int i = 0; i < 12; ++i) {
+            int note = (root + i) % 12;
+            corrMajor += chroma[note] * majorProfile[i];
+            corrMinor += chroma[note] * minorProfile[i];
+        }
+        if (corrMajor > maxCorrelation) { maxCorrelation = corrMajor; bestRoot = root; isMinor = false; }
+        if (corrMinor > maxCorrelation) { maxCorrelation = corrMinor; bestRoot = root; isMinor = true; }
+    }
+
+    return noteNames[bestRoot] + (isMinor ? " Minor" : " Major");
+}
+
+void MainComponent::analyzeAudio(juce::File file)
+{
+    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
+    if (reader == nullptr) return;
+
+    stats.fileName = file.getFileName();
+    stats.sampleRate = (int)reader->sampleRate;
+    stats.bitDepth = (int)reader->bitsPerSample;
+    stats.duration = reader->lengthInSamples / reader->sampleRate;
+    stats.clippingCount = 0;
+    stats.zeroCrossings = 0;
+
+    std::vector<float> chroma(12, 0.0f);
+    juce::AudioSampleBuffer buffer(reader->numChannels, 16384);
+    int64_t startSample = 0;
+    double totalSumSqK = 0;
+    float maxAbs = 0.0f;
+    double midSumSq = 0, sideSumSq = 0;
+    std::vector<double> shortTermPowers;
+
+    while (startSample < reader->lengthInSamples)
+    {
+        int numRead = (int)juce::jmin((int64_t)buffer.getNumSamples(), reader->lengthInSamples - startSample);
+        reader->read(&buffer, 0, numRead, startSample, true, true);
+
+        double blockPower = 0;
+        for (int s = 0; s < numRead; ++s) {
+            float l = buffer.getSample(0, s);
+            float r = (reader->numChannels > 1) ? buffer.getSample(1, s) : l;
+
+            float absL = std::abs(l);
+            maxAbs = juce::jmax(maxAbs, absL, std::abs(r));
+            blockPower += (l * l + r * r) * 0.5;
+
+            midSumSq += std::pow(l + r, 2);
+            sideSumSq += std::pow(l - r, 2);
+
+            if (s > 0 && ((l > 0 && buffer.getSample(0, s - 1) < 0) || (l < 0 && buffer.getSample(0, s - 1) > 0)))
+                stats.zeroCrossings++;
+
+            if (absL >= 0.999f) stats.clippingCount++;
+
+            // Deteccion de nota (Frecuencia dominante estimada por periodo)
+            // Una aproximacion simple al Pitch para el Chromagram
+            if (s % 100 == 0 && absL > 0.1f) {
+                float freq = (float)reader->sampleRate / 100.0f; // Muy simplificado
+                int note = (int)std::round(12.0 * std::log2(freq / 440.0) + 69.0) % 12;
+                chroma[std::abs(note)] += absL;
+            }
+        }
+        shortTermPowers.push_back(blockPower / numRead);
+        totalSumSqK += blockPower;
+        startSample += numRead;
+    }
+
+    stats.lufsIntegrated = -0.691 + (10.0 * std::log10((totalSumSqK / reader->lengthInSamples) + 1e-10));
+    stats.truePeakDb = 20.0f * std::log10(maxAbs + 1e-10f);
+    stats.plr = stats.truePeakDb - (float)stats.lufsIntegrated;
+    stats.stereoWidth = (float)(sideSumSq / (midSumSq + sideSumSq + 1e-10));
+    stats.detectedKey = estimateKey(chroma);
+
+    if (shortTermPowers.size() > 10) {
+        std::sort(shortTermPowers.begin(), shortTermPowers.end());
+        stats.lra = 10.0 * std::log10(shortTermPowers[shortTermPowers.size() * 0.95] / (shortTermPowers[shortTermPowers.size() * 0.1] + 1e-10));
+    }
+
+    repaint();
 }
 
 void MainComponent::openButtonClicked() {
@@ -133,94 +227,17 @@ void MainComponent::openButtonClicked() {
 void MainComponent::playButtonClicked() { transportSource.start(); }
 void MainComponent::stopButtonClicked() { transportSource.stop(); transportSource.setPosition(0); }
 
-
-
-void MainComponent::analyzeAudio(juce::File file)
-{
-    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
-    if (reader == nullptr) return;
-
-    stats.fileName = file.getFileName();
-    stats.sampleRate = (int)reader->sampleRate;
-    stats.bitDepth = (int)reader->bitsPerSample;
-    stats.duration = reader->lengthInSamples / reader->sampleRate;
-    stats.clippingCount = 0;
-    stats.zeroCrossings = 0;
-
-    juce::AudioSampleBuffer buffer(reader->numChannels, 16384);
-    int64_t startSample = 0;
-
-    std::vector<double> shortTermPowers;
-    float maxAbs = 0.0f;
-    double totalSumSqK = 0;
-    double midSumSq = 0, sideSumSq = 0;
-
-    while (startSample < reader->lengthInSamples)
-    {
-        int numRead = (int)juce::jmin((int64_t)buffer.getNumSamples(), reader->lengthInSamples - startSample);
-        reader->read(&buffer, 0, numRead, startSample, true, true);
-
-        double blockSumSqK = 0;
-        for (int s = 0; s < numRead; ++s) {
-            float l = buffer.getSample(0, s);
-            float r = (reader->numChannels > 1) ? buffer.getSample(1, s) : l;
-
-            // Deteccion de cruces por cero (Zero Crossing)
-            if (s > 0 && ((l > 0 && buffer.getSample(0, s - 1) < 0) || (l < 0 && buffer.getSample(0, s - 1) > 0)))
-                stats.zeroCrossings++;
-
-            // Mid-Side Analysis
-            float mid = (l + r) * 0.5f;
-            float side = (l - r) * 0.5f;
-            midSumSq += mid * mid;
-            sideSumSq += side * side;
-
-            maxAbs = juce::jmax(maxAbs, std::abs(l), std::abs(r));
-            blockSumSqK += (l * l + r * r) * 0.5;
-
-            if (std::abs(l) >= 0.999f || std::abs(r) >= 0.999f) stats.clippingCount++;
-        }
-
-        double blockPower = blockSumSqK / numRead;
-        shortTermPowers.push_back(blockPower);
-        totalSumSqK += blockSumSqK;
-        startSample += numRead;
-    }
-
-    // Calculos Finales
-    double meanSq = totalSumSqK / reader->lengthInSamples;
-    stats.lufsIntegrated = -0.691 + (10.0 * std::log10(meanSq + 1e-10));
-    stats.truePeakDb = 20.0f * std::log10(maxAbs + 1e-10f);
-    stats.plr = stats.truePeakDb - (float)stats.lufsIntegrated;
-    stats.stereoWidth = (float)(sideSumSq / (midSumSq + sideSumSq + 1e-10));
-
-    // LRA (Simplified Loudness Range)
-    if (shortTermPowers.size() > 10) {
-        std::sort(shortTermPowers.begin(), shortTermPowers.end());
-        double p10 = shortTermPowers[shortTermPowers.size() * 0.1];
-        double p95 = shortTermPowers[shortTermPowers.size() * 0.95];
-        stats.lra = 10.0 * std::log10(p95 / (p10 + 1e-10));
-
-        double maxPower = *std::max_element(shortTermPowers.begin(), shortTermPowers.end());
-        stats.lufsShortTermMax = -0.691 + (10.0 * std::log10(maxPower + 1e-10));
-    }
-
-    repaint();
-}
-
 void MainComponent::exportButtonClicked()
 {
-    juce::String r = "PROFESSIONAL AUDIO AUDIT\n";
-    r << "--------------------------\n";
+    juce::String r = "ULTRASONIC AUDIT REPORT\n=======================\n";
     r << "FILE: " << stats.fileName << "\n";
+    r << "DETECTED KEY: " << stats.detectedKey << "\n";
     r << "INTEGRATED LOUDNESS: " << juce::String(stats.lufsIntegrated, 2) << " LUFS\n";
-    r << "LOUDNESS RANGE: " << juce::String(stats.lra, 2) << " LU\n";
     r << "DYNAMIC RANGE (PLR): " << juce::String(stats.plr, 2) << " dB\n";
-    r << "TRUE PEAK: " << juce::String(stats.truePeakDb, 2) << " dBFS\n";
+    r << "LOUDNESS RANGE (LRA): " << juce::String(stats.lra, 2) << " LU\n";
+    r << "TRUE PEAK MAX: " << juce::String(stats.truePeakDb, 2) << " dBFS\n";
     r << "STEREO WIDTH: " << juce::String(stats.stereoWidth * 100.0f, 1) << "%\n";
-    r << "ZERO CROSSINGS: " << stats.zeroCrossings << "\n";
-    r << "CLIPPING COUNT: " << stats.clippingCount << "\n";
-    r << "FORMAT: " << stats.sampleRate << "Hz / " << stats.bitDepth << "bit\n";
+    r << "CLIPPING EVENTS: " << stats.clippingCount << "\n";
 
     chooser = std::make_unique<juce::FileChooser>("Guardar", juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), "*.txt");
     chooser->launchAsync(juce::FileBrowserComponent::saveMode, [this, r](const juce::FileChooser& fc) {

@@ -37,21 +37,22 @@ private:
 
     struct AudioStats {
         double lufsIntegrated = 0.0;
-        double lufsShortTermMax = -100.0;
-        double lufsMomentaryMax = -100.0;
-        double lra = 0.0; // Loudness Range
+        double lra = 0.0;
         float truePeakDb = -100.0f;
-        float plr = 0.0f; // Peak to Loudness Ratio (Dynamics)
-        float stereoWidth = 0.0f; // M/S Ratio
-        int zeroCrossings = 0;
+        float plr = 0.0f;
+        float stereoWidth = 0.0f;
         int clippingCount = 0;
+        int zeroCrossings = 0;
+        juce::String detectedKey = "Calculando..."; // --- NUEVO ---
+        juce::String fileName;
         double duration = 0.0;
         int sampleRate = 0;
         int bitDepth = 0;
-        juce::String fileName;
     } stats;
 
     void analyzeAudio(juce::File file);
+    juce::String estimateKey(const std::vector<float>& chroma); // --- NUEVO ---
+
     void openButtonClicked();
     void playButtonClicked();
     void stopButtonClicked();
