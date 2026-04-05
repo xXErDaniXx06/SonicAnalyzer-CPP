@@ -28,10 +28,13 @@ private:
     juce::AudioThumbnailCache thumbnailCache;
     juce::AudioThumbnail thumbnail;
 
-    // --- NUEVO: Logica de saturacion ---
+    // --- Analisis de Audio ---
     std::vector<double> clippingPoints;
-    void findClippingPoints(juce::File file);
-    // -----------------------------------
+    double estimatedBPM = 0.0;
+    float averageRMS = 0.0f;
+
+    void analyzeAudio(juce::File file);
+    // -------------------------
 
     void openButtonClicked();
 
