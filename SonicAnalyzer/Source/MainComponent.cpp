@@ -4,13 +4,9 @@ MainComponent::MainComponent()
     : thumbnailCache(5),
     thumbnail(512, formatManager, thumbnailCache)
 {
-    // Registramos formatos como MP3 y WAV
     formatManager.registerBasicFormats();
-
-    // Configuramos el dibujante de ondas
     thumbnail.addChangeListener(this);
 
-    // Configuramos el boton
     openButton.setButtonText("Cargar MP3...");
     openButton.onClick = [this] { openButtonClicked(); };
     addAndMakeVisible(openButton);
@@ -31,31 +27,37 @@ void MainComponent::releaseResources() {}
 void MainComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
     if (source == &thumbnail)
-        repaint(); // Forzamos el redibujado de la pantalla
+        repaint();
 }
 
 void MainComponent::paint(juce::Graphics& g)
 {
-    // Fondo negro
     g.fillAll(juce::Colours::black);
 
     auto area = getLocalBounds().reduced(20);
-    area.removeFromTop(60); // Dejamos sitio para el boton
+    area.removeFromTop(60);
 
-    // Si hay un archivo cargado, dibujamos la onda
     if (thumbnail.getNumChannels() > 0)
     {
+        // Dibujamos la onda en azul claro
         g.setColour(juce::Colours::lightblue);
         thumbnail.drawChannels(g, area, 0.0, thumbnail.getTotalLength(), 1.0f);
 
-        // Marco de la zona de visualizacion
+        // --- DIBUJAR SATURACION ---
+        g.setColour(juce::Colours::red.withAlpha(0.8f));
+        for (auto time : clippingPoints)
+        {
+            auto xPos = area.getX() + (time / thumbnail.getTotalLength()) * area.getWidth();
+            g.drawVerticalLine((int)xPos, (float)area.getY(), (float)area.getBottom());
+        }
+
         g.setColour(juce::Colours::white.withAlpha(0.3f));
         g.drawRect(area);
     }
     else
     {
         g.setColour(juce::Colours::white);
-        g.drawText("Cargue un archivo para ver la onda de audio", area, juce::Justification::centred);
+        g.drawText("Cargue un archivo para analizar picos de audio", area, juce::Justification::centred);
     }
 }
 
@@ -66,7 +68,7 @@ void MainComponent::resized()
 
 void MainComponent::openButtonClicked()
 {
-    chooser = std::make_unique<juce::FileChooser>("Seleccione un archivo de audio...",
+    chooser = std::make_unique<juce::FileChooser>("Seleccione archivo...",
         juce::File::getSpecialLocation(juce::File::userMusicDirectory),
         "*.mp3;*.wav");
 
@@ -83,12 +85,50 @@ void MainComponent::openButtonClicked()
                 if (reader != nullptr)
                 {
                     readerSource.reset(new juce::AudioFormatReaderSource(reader, true));
-
-                    // Pasamos el archivo al dibujante de ondas
                     thumbnail.setSource(new juce::FileInputSource(file));
 
-                    juce::Logger::outputDebugString("Archivo cargado: " + file.getFileName());
+                    // Escaneamos picos de saturacion
+                    findClippingPoints(file);
+
+                    juce::Logger::outputDebugString("Analisis completado: " + file.getFileName());
                 }
             }
         });
+}
+
+void MainComponent::findClippingPoints(juce::File file)
+{
+    clippingPoints.clear();
+    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
+
+    if (reader != nullptr)
+    {
+        juce::AudioSampleBuffer buffer(reader->numChannels, 1024);
+        int64_t startSample = 0;
+
+        while (startSample < reader->lengthInSamples)
+        {
+            int numSamplesToRead = (int)juce::jmin((int64_t)buffer.getNumSamples(), reader->lengthInSamples - startSample);
+            reader->read(&buffer, 0, numSamplesToRead, startSample, true, true);
+
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+            {
+                auto* channelData = buffer.getReadPointer(ch);
+                for (int s = 0; s < numSamplesToRead; ++s)
+                {
+                    if (std::abs(channelData[s]) >= 0.999f)
+                    {
+                        double timeInSeconds = (startSample + s) / reader->sampleRate;
+
+                        if (clippingPoints.empty() || timeInSeconds > clippingPoints.back() + 0.1)
+                            clippingPoints.push_back(timeInSeconds);
+
+                        break;
+                    }
+                }
+            }
+            startSample += numSamplesToRead;
+        }
+    }
+    repaint();
 }
