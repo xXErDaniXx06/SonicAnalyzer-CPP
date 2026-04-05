@@ -35,15 +35,17 @@ private:
     juce::AudioThumbnailCache thumbnailCache;
     juce::AudioThumbnail thumbnail;
 
-    // --- NUEVAS ESTADISTICAS AVANZADAS ---
     struct AudioStats {
-        double lufs = 0.0;
+        double lufsIntegrated = 0.0;
+        double lufsShortTermMax = -100.0;
+        double lufsMomentaryMax = -100.0;
+        double lra = 0.0; // Loudness Range
         float truePeakDb = -100.0f;
-        float crestFactor = 0.0f;
-        float correlation = 0.0f;
-        float dcOffset = 0.0f;
-        double duration = 0.0;
+        float plr = 0.0f; // Peak to Loudness Ratio (Dynamics)
+        float stereoWidth = 0.0f; // M/S Ratio
+        int zeroCrossings = 0;
         int clippingCount = 0;
+        double duration = 0.0;
         int sampleRate = 0;
         int bitDepth = 0;
         juce::String fileName;
