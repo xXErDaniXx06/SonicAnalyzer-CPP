@@ -21,6 +21,10 @@ public:
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
     void timerCallback() override;
 
+    // --- NUEVO: Interaccion con el raton ---
+    void mouseDown(const juce::MouseEvent& event) override;
+    void mouseDrag(const juce::MouseEvent& event) override;
+
 private:
     juce::TextButton openButton;
     juce::TextButton playButton;
@@ -43,6 +47,9 @@ private:
     void openButtonClicked();
     void playButtonClicked();
     void stopButtonClicked();
+
+    // Funcion auxiliar para mover el cabezal
+    void updateSeekPosition(int x);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
